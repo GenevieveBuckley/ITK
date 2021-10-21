@@ -22,6 +22,7 @@ import sys
 import os
 import numpy as np
 import pathlib
+import pickle
 
 import itk
 
@@ -161,6 +162,9 @@ except Exception as e:
         raise e
 image = itk.imread(filename, imageio=itk.PNGImageIO.New())
 assert type(image) == itk.Image[itk.RGBPixel[itk.UC], 2]
+
+# Test serialization with pickle
+assert (pickle.loads(pickle.dumps(image)) == image).all()
 
 # Make sure we can read unsigned short, unsigned int, and cast
 image = itk.imread(filename, itk.UI)
