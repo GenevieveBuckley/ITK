@@ -19,7 +19,6 @@
 from functools import reduce
 import re
 from typing import Optional, Union, Dict, Any, List, Tuple, Sequence, TYPE_CHECKING
-import six
 from sys import stderr as system_error_stream
 
 import numpy as np
@@ -93,8 +92,8 @@ __all__ = [
     "image_from_xarray",
     "vtk_image_from_image",
     "image_from_vtk_image",
-    "image_to_json",
-    "image_from_json",
+    "dict_from_image",
+    "image_from_dict",
     "image_intensity_min_max",
     "imwrite",
     "imread",
@@ -807,102 +806,82 @@ def image_from_vtk_image(vtk_image: "vtk.vtkImageData") -> "itkt.ImageBase":
     return l_image
 
 
-def image_to_json(itkimage, manager=None):
-    """Serialize a Python itk.Image object.
-    Attributes of this dictionary are to be passed to the JavaScript itkimage
-    constructor.
-    """
+def dict_from_image(image: "itkt.Image") -> Dict:
+    """Serialize a Python itk.Image object to a pickable Python dictionary."""
     import itk
-    try:
-        import zstandard as zstd
-    except ImportError:
-        import zstd
+    import zstandard as zstd
 
-    if itkimage is None:
-        return None
-    else:
-        direction = itkimage.GetDirection()
-        directionMatrix = direction.GetVnlMatrix()
-        directionList = []
-        dimension = itkimage.GetImageDimension()
-        pixel_arr = itk.array_view_from_image(itkimage)
-        componentType, pixelType = image_to_type(itkimage)
-        if 'int64' in componentType:
-            # JavaScript does not yet support 64-bit integers well
-            if componentType == 'uint64_t':
-                pixel_arr = pixel_arr.astype(np.uint32)
-                componentType = 'uint32_t'
-            else:
-                pixel_arr = pixel_arr.astype(np.int32)
-                componentType = 'int32_t'
-        compressor = zstd.ZstdCompressor(level=3)
-        compressed = compressor.compress(pixel_arr.data)
-        pixel_arr_compressed = memoryview(compressed)
-        for col in range(dimension):
-            for row in range(dimension):
-                directionList.append(directionMatrix.get(row, col))
-        imageType = dict(
-            dimension=dimension,
-            componentType=componentType,
-            pixelType=pixelType,
-            components=itkimage.GetNumberOfComponentsPerPixel()
-        )
-        return dict(
-            imageType=imageType,
-            origin=tuple(itkimage.GetOrigin()),
-            spacing=tuple(itkimage.GetSpacing()),
-            size=tuple(itkimage.GetBufferedRegion().GetSize()),
-            direction={'data': directionList,
-                       'rows': dimension,
-                       'columns': dimension},
-            compressedData=compressed
-        )
-
-
-def image_from_json(js, manager=None):
-    """Deserialize a Javascript itk.js Image object."""
-    import itk
-    try:
-        import zstandard as zstd
-    except ImportError:
-        import zstd
-
-    if js is None:
-        return None
-    else:
-        ImageType, dtype = type_to_image(js['imageType'])
-        decompressor = zstd.ZstdDecompressor()
-        if six.PY2:
-            asBytes = js['compressedData'].tobytes()
-            pixelBufferArrayCompressed = np.frombuffer(asBytes, dtype=np.uint8)
+    direction = image.GetDirection()
+    directionMatrix = direction.GetVnlMatrix()
+    directionList = []
+    dimension = image.GetImageDimension()
+    pixel_arr = itk.array_view_from_image(image)
+    componentType, pixelType = image_to_type(image)
+    if 'int64' in componentType:
+        # JavaScript does not yet support 64-bit integers well
+        if componentType == 'uint64_t':
+            pixel_arr = pixel_arr.astype(np.uint32)
+            componentType = 'uint32_t'
         else:
-            pixelBufferArrayCompressed = np.frombuffer(js['compressedData'],
-                                                    dtype=np.uint8)
-        pixelCount = reduce(lambda x, y: x * y, js['size'], 1)
-        numberOfBytes = pixelCount * \
-            js['imageType']['components'] * np.dtype(dtype).itemsize
-        pixelBufferArray = \
-            np.frombuffer(decompressor.decompress(pixelBufferArrayCompressed,
-                                                numberOfBytes),
-                        dtype=dtype)
-        pixelBufferArray.shape = js['size'][::-1]
-        # Workaround for GetImageFromArray required until 5.0.1
-        # and https://github.com/numpy/numpy/pull/11739
-        pixelBufferArrayCopyToBeRemoved = pixelBufferArray.copy()
-        # image = itk.PyBuffer[ImageType].GetImageFromArray(pixelBufferArray)
-        image = itk.PyBuffer[ImageType].GetImageFromArray(
-            pixelBufferArrayCopyToBeRemoved)
-        Dimension = image.GetImageDimension()
-        image.SetOrigin(js['origin'])
-        image.SetSpacing(js['spacing'])
-        direction = image.GetDirection()
-        directionMatrix = direction.GetVnlMatrix()
-        directionJs = js['direction']['data']
-        for col in range(Dimension):
-            for row in range(Dimension):
-                directionMatrix.put(
-                    row, col, directionJs[col + row * Dimension])
-        return image
+            pixel_arr = pixel_arr.astype(np.int32)
+            componentType = 'int32_t'
+    compressor = zstd.ZstdCompressor(level=3)
+    compressed = compressor.compress(pixel_arr.data)
+    pixel_arr_compressed = memoryview(compressed)
+    for col in range(dimension):
+        for row in range(dimension):
+            directionList.append(directionMatrix.get(row, col))
+    imageType = dict(
+        dimension=dimension,
+        componentType=componentType,
+        pixelType=pixelType,
+        components=image.GetNumberOfComponentsPerPixel()
+    )
+    return dict(
+        imageType=imageType,
+        origin=tuple(image.GetOrigin()),
+        spacing=tuple(image.GetSpacing()),
+        size=tuple(image.GetBufferedRegion().GetSize()),
+        direction={'data': directionList,
+                    'rows': dimension,
+                    'columns': dimension},
+        compressedData=compressed
+    )
+
+
+def image_from_dict(image_dict: Dict) -> "itkt.Image":
+    """Deserialize an dictionary representing an itk.Image object."""
+    import itk
+    import zstandard as zstd
+
+    ImageType, dtype = type_to_image(image_dict['imageType'])
+    decompressor = zstd.ZstdDecompressor()
+    pixelBufferArrayCompressed = np.frombuffer(image_dict['compressedData'], dtype=np.uint8)
+    pixelCount = reduce(lambda x, y: x * y, image_dict['size'], 1)
+    numberOfBytes = pixelCount * \
+        image_dict['imageType']['components'] * np.dtype(dtype).itemsize
+    pixelBufferArray = \
+        np.frombuffer(decompressor.decompress(pixelBufferArrayCompressed,
+                                            numberOfBytes),
+                    dtype=dtype)
+    pixelBufferArray.shape = image_dict['size'][::-1]
+    # Workaround for GetImageFromArray required until 5.0.1
+    # and https://github.com/numpy/numpy/pull/11739
+    pixelBufferArrayCopyToBeRemoved = pixelBufferArray.copy()
+    # image = itk.PyBuffer[ImageType].GetImageFromArray(pixelBufferArray)
+    image = itk.PyBuffer[ImageType].GetImageFromArray(
+        pixelBufferArrayCopyToBeRemoved)
+    Dimension = image.GetImageDimension()
+    image.SetOrigin(image_dict['origin'])
+    image.SetSpacing(image_dict['spacing'])
+    direction = image.GetDirection()
+    directionMatrix = direction.GetVnlMatrix()
+    directionJs = js['direction']['data']
+    for col in range(Dimension):
+        for row in range(Dimension):
+            directionMatrix.put(
+                row, col, directionJs[col + row * Dimension])
+    return image
 
 
 # return an image

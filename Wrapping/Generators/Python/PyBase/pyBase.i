@@ -524,12 +524,14 @@ str = str
 
             def __getstate__(self):
                 """Get object state, necessary for serialization with pickle."""
-                state = itkimage_to_json(self)
+                import itk
+                state = itk.dict_from_image(self)
                 return state
 
             def __setstate__(self, state):
                 """Set object state, necessary for serialization with pickle."""
-                deserialized = itkimage_from_json(state)
+                import itk
+                deserialized = itk.image_from_dict(state)
                 self.__dict__['this'] = deserialized
                 self.SetOrigin(state['origin'])
                 self.SetSpacing(state['spacing'])
