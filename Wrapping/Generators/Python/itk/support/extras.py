@@ -811,9 +811,7 @@ def dict_from_image(image: "itkt.Image") -> Dict:
     import itk
     import zstandard as zstd
 
-    direction = image.GetDirection()
-    directionMatrix = direction.GetVnlMatrix()
-    directionList = []
+    direction = np.array(image.GetDirection())
     dimension = image.GetImageDimension()
     pixel_arr = itk.array_view_from_image(image)
     componentType, pixelType = image_to_type(image)
@@ -828,9 +826,6 @@ def dict_from_image(image: "itkt.Image") -> Dict:
     compressor = zstd.ZstdCompressor(level=3)
     compressed = compressor.compress(pixel_arr.data)
     pixel_arr_compressed = memoryview(compressed)
-    for col in range(dimension):
-        for row in range(dimension):
-            directionList.append(directionMatrix.get(row, col))
     imageType = dict(
         dimension=dimension,
         componentType=componentType,
@@ -842,7 +837,7 @@ def dict_from_image(image: "itkt.Image") -> Dict:
         origin=tuple(image.GetOrigin()),
         spacing=tuple(image.GetSpacing()),
         size=tuple(image.GetBufferedRegion().GetSize()),
-        direction={'data': directionList,
+        direction={'data': direction,
                     'rows': dimension,
                     'columns': dimension},
         compressedData=compressed
