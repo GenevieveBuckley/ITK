@@ -846,16 +846,10 @@ def image_from_dict(image_dict: Dict) -> "itkt.Image":
 
     ImageType, dtype = type_to_image(image_dict['imageType'])
     image = itk.PyBuffer[ImageType].GetImageFromArray(image_dict['data'])
-    Dimension = image.GetImageDimension()
     image.SetOrigin(image_dict['origin'])
     image.SetSpacing(image_dict['spacing'])
-    direction = image.GetDirection()
-    directionMatrix = direction.GetVnlMatrix()
-    directionJs = image_dict['direction']['data']
-    for col in range(Dimension):
-        for row in range(Dimension):
-            directionMatrix.put(
-                row, col, directionJs[col + row * Dimension])
+    direction = image_dict['direction']['data']
+    image.SetDirection(direction)
     return image
 
 
