@@ -843,31 +843,15 @@ def dict_from_image(image: "itkt.Image") -> Dict:
 def image_from_dict(image_dict: Dict) -> "itkt.Image":
     """Deserialize an dictionary representing an itk.Image object."""
     import itk
-    import zstandard as zstd
 
     ImageType, dtype = type_to_image(image_dict['imageType'])
-    decompressor = zstd.ZstdDecompressor()
-    pixelBufferArrayCompressed = np.frombuffer(image_dict['compressedData'], dtype=np.uint8)
-    pixelCount = reduce(lambda x, y: x * y, image_dict['size'], 1)
-    numberOfBytes = pixelCount * \
-        image_dict['imageType']['components'] * np.dtype(dtype).itemsize
-    pixelBufferArray = \
-        np.frombuffer(decompressor.decompress(pixelBufferArrayCompressed,
-                                            numberOfBytes),
-                    dtype=dtype)
-    pixelBufferArray.shape = image_dict['size'][::-1]
-    # Workaround for GetImageFromArray required until 5.0.1
-    # and https://github.com/numpy/numpy/pull/11739
-    pixelBufferArrayCopyToBeRemoved = pixelBufferArray.copy()
-    # image = itk.PyBuffer[ImageType].GetImageFromArray(pixelBufferArray)
-    image = itk.PyBuffer[ImageType].GetImageFromArray(
-        pixelBufferArrayCopyToBeRemoved)
+    image = itk.PyBuffer[ImageType].GetImageFromArray(image_dict['data'])
     Dimension = image.GetImageDimension()
     image.SetOrigin(image_dict['origin'])
     image.SetSpacing(image_dict['spacing'])
     direction = image.GetDirection()
     directionMatrix = direction.GetVnlMatrix()
-    directionJs = js['direction']['data']
+    directionJs = image_dict['direction']['data']
     for col in range(Dimension):
         for row in range(Dimension):
             directionMatrix.put(
