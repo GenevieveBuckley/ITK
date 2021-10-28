@@ -809,7 +809,6 @@ def image_from_vtk_image(vtk_image: "vtk.vtkImageData") -> "itkt.ImageBase":
 def dict_from_image(image: "itkt.Image") -> Dict:
     """Serialize a Python itk.Image object to a pickable Python dictionary."""
     import itk
-    import zstandard as zstd
 
     direction = np.array(image.GetDirection())
     dimension = image.GetImageDimension()
@@ -823,9 +822,6 @@ def dict_from_image(image: "itkt.Image") -> Dict:
         else:
             pixel_arr = pixel_arr.astype(np.int32)
             componentType = 'int32_t'
-    compressor = zstd.ZstdCompressor(level=3)
-    compressed = compressor.compress(pixel_arr.data)
-    pixel_arr_compressed = memoryview(compressed)
     imageType = dict(
         dimension=dimension,
         componentType=componentType,
@@ -840,7 +836,7 @@ def dict_from_image(image: "itkt.Image") -> Dict:
         direction={'data': direction,
                     'rows': dimension,
                     'columns': dimension},
-        compressedData=compressed
+        data=pixel_arr
     )
 
 
