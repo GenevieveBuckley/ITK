@@ -36,8 +36,6 @@ fileiotype = Union[str, bytes, os.PathLike]
 
 import itk.support.types as itkt
 
-from .helpers import image_to_type, type_to_image
-
 if TYPE_CHECKING:
     try:
         import xarray as xr
@@ -813,23 +811,7 @@ def dict_from_image(image: "itkt.Image") -> Dict:
     direction = np.array(image.GetDirection())
     dimension = image.GetImageDimension()
     pixel_arr = itk.array_view_from_image(image)
-    componentType, pixelType = image_to_type(image)
-    if 'int64' in componentType:
-        # JavaScript does not yet support 64-bit integers well
-        if componentType == 'uint64_t':
-            pixel_arr = pixel_arr.astype(np.uint32)
-            componentType = 'uint32_t'
-        else:
-            pixel_arr = pixel_arr.astype(np.int32)
-            componentType = 'int32_t'
-    imageType = dict(
-        dimension=dimension,
-        componentType=componentType,
-        pixelType=pixelType,
-        components=image.GetNumberOfComponentsPerPixel()
-    )
     return dict(
-        imageType=imageType,
         origin=tuple(image.GetOrigin()),
         spacing=tuple(image.GetSpacing()),
         size=tuple(image.GetBufferedRegion().GetSize()),
@@ -844,8 +826,7 @@ def image_from_dict(image_dict: Dict) -> "itkt.Image":
     """Deserialize an dictionary representing an itk.Image object."""
     import itk
 
-    ImageType, dtype = type_to_image(image_dict['imageType'])
-    image = itk.PyBuffer[ImageType].GetImageFromArray(image_dict['data'])
+    image = itk.GetImageViewFromArray(image_dict['data'])
     image.SetOrigin(image_dict['origin'])
     image.SetSpacing(image_dict['spacing'])
     direction = image_dict['direction']['data']
