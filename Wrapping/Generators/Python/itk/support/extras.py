@@ -16,7 +16,6 @@
 #
 # ==========================================================================*/
 
-from functools import reduce
 import re
 from typing import Optional, Union, Dict, Any, List, Tuple, Sequence, TYPE_CHECKING
 from sys import stderr as system_error_stream
