@@ -16,11 +16,8 @@
 #
 # ==========================================================================*/
 
-import os
 import re
 import functools
-
-import numpy as np
 
 _HAVE_XARRAY = False
 try:
