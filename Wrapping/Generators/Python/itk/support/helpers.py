@@ -16,8 +16,11 @@
 #
 # ==========================================================================*/
 
+import os
 import re
 import functools
+
+import numpy as np
 
 _HAVE_XARRAY = False
 try:
@@ -173,3 +176,63 @@ def accept_array_like_xarray_torch(image_filter):
             return image_filter(*args, **kwargs)
 
     return image_filter_wrapper
+
+
+def image_type_from_wasm_type(jstype):
+    import itk
+
+    _pixelType_to_prefix = {
+        1: '',
+        2: 'RGB',
+        3: 'RGBA',
+        4: 'O',
+        5: 'V',
+        7: 'CV',
+        8: 'SSRT',
+        11: 'FA'
+    }
+    pixelType = jstype['pixelType']
+    dimension = jstype['dimension']
+    if pixelType == 10:
+        if jstype['componentType'] == 'float':
+            return itk.Image[itk.complex, itk.F], np.float32
+        else:
+            return itk.Image[itk.complex, itk.D], np.float64
+
+    def _long_type():
+        if os.name == 'nt':
+            return 'LL'
+        else:
+            return 'L'
+    prefix = _pixelType_to_prefix[pixelType]
+    _js_to_python = {
+        'int8_t': 'SC',
+        'uint8_t': 'UC',
+        'int16_t': 'SS',
+        'uint16_t': 'US',
+        'int32_t': 'SI',
+        'uint32_t': 'UI',
+        'int64_t': 'S' + _long_type(),
+        'uint64_t': 'U' + _long_type(),
+        'float': 'F',
+        'double': 'D'
+    }
+    _js_to_numpy_dtype = {
+        'int8_t': np.int8,
+        'uint8_t': np.uint8,
+        'int16_t': np.int16,
+        'uint16_t': np.uint16,
+        'int32_t': np.int32,
+        'uint32_t': np.uint32,
+        'int64_t': np.int64,
+        'uint64_t': np.uint64,
+        'float': np.float32,
+        'double': np.float64
+    }
+    dtype = _js_to_numpy_dtype[jstype['componentType']]
+    if pixelType != 4:
+        prefix += _js_to_python[jstype['componentType']]
+    if pixelType not in (1, 2, 3, 10):
+        prefix += str(dimension)
+    prefix += str(dimension)
+    return getattr(itk.Image, prefix), dtype

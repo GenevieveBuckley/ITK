@@ -531,6 +531,7 @@ str = str
             def __setstate__(self, state):
                 """Set object state, necessary for serialization with pickle."""
                 import itk
+                import numpy as np
                 deserialized = itk.image_from_dict(state)
                 self.__dict__['this'] = deserialized
                 self.SetOrigin(state['origin'])

@@ -35,6 +35,8 @@ fileiotype = Union[str, bytes, os.PathLike]
 
 import itk.support.types as itkt
 
+from .helpers import image_type_from_wasm_type
+
 if TYPE_CHECKING:
     try:
         import xarray as xr
@@ -807,16 +809,12 @@ def dict_from_image(image: "itkt.Image") -> Dict:
     """Serialize a Python itk.Image object to a pickable Python dictionary."""
     import itk
 
-    direction = np.array(image.GetDirection())
-    dimension = image.GetImageDimension()
     pixel_arr = itk.array_view_from_image(image)
     return dict(
         origin=tuple(image.GetOrigin()),
         spacing=tuple(image.GetSpacing()),
         size=tuple(image.GetBufferedRegion().GetSize()),
-        direction={'data': direction,
-                    'rows': dimension,
-                    'columns': dimension},
+        direction=np.asarray(image.GetDirection()),
         data=pixel_arr
     )
 
@@ -825,11 +823,11 @@ def image_from_dict(image_dict: Dict) -> "itkt.Image":
     """Deserialize an dictionary representing an itk.Image object."""
     import itk
 
-    image = itk.GetImageViewFromArray(image_dict['data'])
+    ImageType = image_type_from_wasm_type(image_dict['imageType'])
+    image = itk.PyBuffer[ImageType].GetImageViewFromArray(image_dict['data'])
     image.SetOrigin(image_dict['origin'])
     image.SetSpacing(image_dict['spacing'])
-    direction = image_dict['direction']['data']
-    image.SetDirection(direction)
+    image.SetDirection(image_dict['direction'])
     return image
 
 
