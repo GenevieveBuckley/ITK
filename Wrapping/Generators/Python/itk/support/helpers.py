@@ -178,6 +178,73 @@ def accept_array_like_xarray_torch(image_filter):
     return image_filter_wrapper
 
 
+def image_to_type(itkimage):  # noqa: C901
+    import itk
+
+    component = itk.template(itkimage)[1][0]
+    if component == itk.UL:
+        if os.name == 'nt':
+            return 'uint32_t', 1
+        else:
+            return 'uint64_t', 1
+    mangle = None
+    pixelType = 1
+    if component == itk.SL:
+        if os.name == 'nt':
+            return 'int32_t', 1,
+        else:
+            return 'int64_t', 1,
+    if component in (itk.SC, itk.UC, itk.SS, itk.US, itk.SI, itk.UI, itk.F,
+            itk.D, itk.B):
+        mangle = component
+    elif component in [i[1] for i in itk.Vector.items()]:
+        mangle = itk.template(component)[1][0]
+        pixelType = 5
+    elif component == itk.complex[itk.F]:
+        # complex float
+        return 'float', 10
+    elif component == itk.complex[itk.D]:
+        # complex float
+        return 'double', 10
+    elif component in [i[1] for i in itk.CovariantVector.items()]:
+        # CovariantVector
+        mangle = itk.template(component)[1][0]
+        pixelType = 7
+    elif component in [i[1] for i in itk.Offset.items()]:
+        # Offset
+        return 'int64_t', 4
+    elif component in [i[1] for i in itk.FixedArray.items()]:
+        # FixedArray
+        mangle = itk.template(component)[1][0]
+        pixelType = 11
+    elif component in [i[1] for i in itk.RGBAPixel.items()]:
+        # RGBA
+        mangle = itk.template(component)[1][0]
+        pixelType = 3
+    elif component in [i[1] for i in itk.RGBPixel.items()]:
+        # RGB
+        mangle = itk.template(component)[1][0]
+        pixelType = 2
+    elif component in [i[1] for i in itk.SymmetricSecondRankTensor.items()]:
+        # SymmetricSecondRankTensor
+        mangle = itk.template(component)[1][0]
+        pixelType = 8
+    else:
+        raise RuntimeError('Unrecognized component type: {0}'.format(str(component)))
+    _python_to_js = {
+        itk.SC: 'int8_t',
+        itk.UC: 'uint8_t',
+        itk.SS: 'int16_t',
+        itk.US: 'uint16_t',
+        itk.SI: 'int32_t',
+        itk.UI: 'uint32_t',
+        itk.F: 'float',
+        itk.D: 'double',
+        itk.B: 'uint8_t'
+    }
+    return _python_to_js[mangle], pixelType
+
+
 def image_type_from_wasm_type(jstype):
     import itk
 
