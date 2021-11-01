@@ -164,7 +164,7 @@ image = itk.imread(filename, imageio=itk.PNGImageIO.New())
 assert type(image) == itk.Image[itk.RGBPixel[itk.UC], 2]
 
 # Test serialization with pickle
-array = np.random.randint(0, 256, (8, 12)).astype(np.uint8)
+array = np.random.randint(0, 256, (8, 12))
 image = itk.image_from_array(array)
 image.SetSpacing([1.0, 2.0])
 image.SetOrigin([11.0, 4.0])
