@@ -35,7 +35,7 @@ fileiotype = Union[str, bytes, os.PathLike]
 
 import itk.support.types as itkt
 
-from .helpers import image_to_type, image_type_from_wasm_type
+from .helpers import wasm_type_from_image_type, image_type_from_wasm_type
 
 if TYPE_CHECKING:
     try:
@@ -811,7 +811,7 @@ def dict_from_image(image: "itkt.Image") -> Dict:
 
     pixel_arr = itk.array_view_from_image(image)
     dimension = image.GetImageDimension()
-    componentType, pixelType = image_to_type(image)
+    componentType, pixelType = wasm_type_from_image_type(image)
     imageType = dict(
         dimension=dimension,
         componentType=componentType,

@@ -178,7 +178,7 @@ def accept_array_like_xarray_torch(image_filter):
     return image_filter_wrapper
 
 
-def image_to_type(itkimage):  # noqa: C901
+def wasm_type_from_image_type(itkimage):  # noqa: C901
     import itk
 
     component = itk.template(itkimage)[1][0]
