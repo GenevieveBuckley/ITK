@@ -242,7 +242,13 @@ def wasm_type_from_image_type(itkimage):  # noqa: C901
         itk.D: 'double',
         itk.B: 'uint8_t'
     }
-    return _python_to_js[mangle], pixelType
+    imageType = dict(
+        dimension=itkimage.GetImageDimension(),
+        componentType=_python_to_js[mangle],
+        pixelType=pixelType,
+        components=itkimage.GetNumberOfComponentsPerPixel()
+    )
+    return imageType
 
 
 def image_type_from_wasm_type(jstype):

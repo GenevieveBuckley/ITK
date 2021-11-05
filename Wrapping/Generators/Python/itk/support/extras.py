@@ -810,14 +810,7 @@ def dict_from_image(image: "itkt.Image") -> Dict:
     import itk
 
     pixel_arr = itk.array_view_from_image(image)
-    dimension = image.GetImageDimension()
-    componentType, pixelType = wasm_type_from_image_type(image)
-    imageType = dict(
-        dimension=dimension,
-        componentType=componentType,
-        pixelType=pixelType,
-        components=image.GetNumberOfComponentsPerPixel()
-    )
+    imageType = wasm_type_from_image_type(image)
     return dict(
         imageType=imageType,
         origin=tuple(image.GetOrigin()),
