@@ -173,7 +173,10 @@ cosine = np.cos(theta)
 sine = np.sin(theta)
 rotation = np.array(((cosine, -sine), (sine, cosine)))
 image.SetDirection(rotation)
-assert (pickle.loads(pickle.dumps(image)) == image).all()
+serialize_deserialize = pickle.loads(pickle.dumps(image))
+# verify_input_information checks origin, spacing, direction consistency
+comparison = itk.comparison_image_filter(image, serialize_deserialize, verify_input_information=True)
+assert np.sum(comparison) == 0.0
 
 # Make sure we can read unsigned short, unsigned int, and cast
 image = itk.imread(filename, itk.UI)
